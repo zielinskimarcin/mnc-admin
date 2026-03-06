@@ -3,5 +3,5 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig({
   plugins: [react()],
-  base: "/mnc-admin/",
+  base: "/mnc-admin/", // 👈 NAZWA REPO Z SLASHAMI
 });
