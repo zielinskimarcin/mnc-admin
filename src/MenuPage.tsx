@@ -53,9 +53,12 @@ export default function MenuPage() {
     setLoading(false);
   }
 
-  useEffect(() => {
-    load();
-  }, []);
+useEffect(() => {
+  const run = async () => {
+    await load();
+  };
+  run();
+}, []);
 
   const filtered = useMemo(
     () => items.filter((x) => x.category === cat),
