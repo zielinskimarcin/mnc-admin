@@ -18,7 +18,12 @@ function Login() {
   async function signIn() {
     setMsg(null);
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
     setLoading(false);
     if (error) setMsg(error.message);
   }
@@ -28,12 +33,24 @@ function Login() {
       <h1 style={styles.h1}>MNC ADMIN</h1>
       <div style={styles.card}>
         <label style={styles.label}>EMAIL</label>
-        <input style={styles.input} value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input
+          style={styles.input}
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
+
         <label style={{ ...styles.label, marginTop: 12 }}>HASŁO</label>
-        <input style={styles.input} type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input
+          style={styles.input}
+          type="password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
         <button style={styles.btnBlack} onClick={signIn} disabled={loading}>
           {loading ? "..." : "ZALOGUJ"}
         </button>
+
         {msg && <div style={styles.msg}>{msg}</div>}
       </div>
     </div>
@@ -41,26 +58,61 @@ function Login() {
 }
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>("menu");
   const [session, setSession] = useState<any>(null);
   const [role, setRole] = useState<Role>(null);
   const [booting, setBooting] = useState(true);
+  const [tab, setTab] = useState<Tab>("menu");
 
+  // 🔐 Trzymanie sesji
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      const s = data.session;
-      setSession(s);
-      setRole(s?.user?.app_metadata?.role ?? null);
+    const init = async () => {
+      const { data } = await supabase.auth.getSession();
+      setSession(data.session);
       setBooting(false);
-    });
+    };
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_e, s) => {
-      setSession(s);
-      setRole(s?.user?.app_metadata?.role ?? null);
-    });
+    init();
 
-    return () => sub.subscription.unsubscribe();
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      async (_event, s) => {
+        setSession(s);
+      }
+    );
+
+    return () => listener.subscription.unsubscribe();
   }, []);
+
+  // 🔑 Pobranie roli z profiles
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setRole(null);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadRole() {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", session.user.id)
+        .single();
+
+      if (!cancelled) {
+        if (error || !data) {
+          setRole(null);
+        } else {
+          setRole(data.role);
+        }
+      }
+    }
+
+    loadRole();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [session?.user?.id]);
 
   const canUseDashboard = useMemo(
     () => role === "admin" || role === "staff",
@@ -69,19 +121,37 @@ export default function App() {
 
   async function signOut() {
     await supabase.auth.signOut();
-    setTab("menu");
+    window.location.reload();
   }
 
+  // 🔄 Loader startowy
   if (booting) {
     return (
       <div style={styles.page}>
-        <div style={{ ...styles.card, textAlign: "center" }}>Ładowanie...</div>
+        <div style={{ ...styles.card, textAlign: "center" }}>
+          Ładowanie...
+        </div>
       </div>
     );
   }
 
-  if (!session) return <Login />;
+  // ❌ brak sesji
+  if (!session) {
+    return <Login />;
+  }
 
+  // 🔄 rola jeszcze nie wczytana
+  if (role === null) {
+    return (
+      <div style={styles.page}>
+        <div style={{ ...styles.card, textAlign: "center" }}>
+          Ładowanie...
+        </div>
+      </div>
+    );
+  }
+
+  // ❌ brak dostępu
   if (!canUseDashboard) {
     return (
       <div style={styles.page}>
@@ -90,7 +160,10 @@ export default function App() {
           <div style={{ textAlign: "center", letterSpacing: 2 }}>
             BRAK DOSTĘPU
           </div>
-          <button style={{ ...styles.btnWhite, marginTop: 16 }} onClick={signOut}>
+          <button
+            style={{ ...styles.btnWhite, marginTop: 16 }}
+            onClick={signOut}
+          >
             WYLOGUJ
           </button>
         </div>
@@ -112,21 +185,24 @@ export default function App() {
           <div style={styles.brand}>MNC ADMIN</div>
           <div style={styles.badge}>{role?.toUpperCase()}</div>
         </div>
+
         <button style={styles.smallBtn} onClick={signOut}>
           WYLOGUJ
         </button>
       </div>
 
       <div style={styles.tabsRow}>
-        {tabs.filter(t => t.show).map((t) => (
-          <button
-            key={t.key}
-            style={tab === t.key ? styles.tabOn : styles.tabOff}
-            onClick={() => setTab(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
+        {tabs
+          .filter((t) => t.show)
+          .map((t) => (
+            <button
+              key={t.key}
+              style={tab === t.key ? styles.tabOn : styles.tabOff}
+              onClick={() => setTab(t.key)}
+            >
+              {t.label}
+            </button>
+          ))}
       </div>
 
       {tab === "menu" && <MenuPage />}
