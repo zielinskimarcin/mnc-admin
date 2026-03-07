@@ -1,0 +1,17 @@
+name: Push Cron (every minute)
+
+on:
+  schedule:
+    - cron: "* * * * *"
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Supabase scheduled push function
+        run: |
+          curl -sS -X POST "${{ secrets.SUPABASE_FUNCTION_URL }}" \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_CRON_SECRET }}" \
+            -d "{}"
