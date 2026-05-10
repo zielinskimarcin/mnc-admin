@@ -18,6 +18,35 @@ export default function PointsPage() {
       .single();
   }
 
+  async function adjustPoint(delta: 1 | -1) {
+    const trimmed = code.trim();
+
+    if (!/^\d{3}$/.test(trimmed)) {
+      setMsg("Kod musi mieć dokładnie 3 cyfry");
+      return;
+    }
+
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .rpc("staff_adjust_points_by_code", {
+        p_short_code: trimmed,
+        p_delta: delta,
+      })
+      .single();
+
+    setLoading(false);
+
+    if (error || !data) {
+      setMsg(error?.message ?? "Nie znaleziono profilu");
+      return;
+    }
+
+    const newPoints = (data as { points: number }).points ?? 0;
+    setMsg(delta === 1 ? `Dodano punkt. Nowy stan: ${newPoints}` : `Usunięto punkt. Nowy stan: ${newPoints}`);
+    setCode("");
+  }
+
   // odświeżenie “stanu” dla aktualnie wpisanego kodu (jeśli jest poprawny)
   async function refresh() {
     const trimmed = code.trim();
@@ -59,75 +88,12 @@ export default function PointsPage() {
 
   async function addPoint() {
     setMsg(null);
-    const trimmed = code.trim();
-
-    if (!/^\d{3}$/.test(trimmed)) {
-      setMsg("Kod musi mieć dokładnie 3 cyfry");
-      return;
-    }
-
-    setLoading(true);
-
-    const { data: profile, error } = await findProfileByCode(trimmed);
-    if (error || !profile) {
-      setLoading(false);
-      setMsg("Nie znaleziono profilu");
-      return;
-    }
-
-    const newPoints = (profile.points ?? 0) + 1;
-
-    const { error: updErr } = await supabase
-      .from("profiles")
-      .update({ points: newPoints })
-      .eq("id", profile.id);
-
-    setLoading(false);
-
-    if (updErr) {
-      setMsg(updErr.message);
-      return;
-    }
-
-    setMsg(`Dodano punkt. Nowy stan: ${newPoints}`);
-    setCode(""); // ⬅️ reset pola po dodaniu punktu
+    await adjustPoint(1);
   }
 
   async function removePoint() {
     setMsg(null);
-    const trimmed = code.trim();
-
-    if (!/^\d{3}$/.test(trimmed)) {
-      setMsg("Kod musi mieć dokładnie 3 cyfry");
-      return;
-    }
-
-    setLoading(true);
-
-    const { data: profile, error } = await findProfileByCode(trimmed);
-    if (error || !profile) {
-      setLoading(false);
-      setMsg("Nie znaleziono profilu");
-      return;
-    }
-
-    const current = profile.points ?? 0;
-    const newPoints = Math.max(0, current - 1);
-
-    const { error: updErr } = await supabase
-      .from("profiles")
-      .update({ points: newPoints })
-      .eq("id", profile.id);
-
-    setLoading(false);
-
-    if (updErr) {
-      setMsg(updErr.message);
-      return;
-    }
-
-    setMsg(`Usunięto punkt. Nowy stan: ${newPoints}`);
-    setCode(""); // ⬅️ reset pola po dodaniu punktu
+    await adjustPoint(-1);
   }
 
   return (
