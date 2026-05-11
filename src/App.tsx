@@ -9,6 +9,7 @@ import MenuPage from "./MenuPage";
 import PointsPage from "./PointsPage";
 import PushPage from "./PushPage";
 import UsersPage from "./UsersPage";
+import { tenant } from "./tenant";
 
 type Tab = "menu" | "points" | "push" | "users";
 type Role = "admin" | "staff" | "user" | null;
@@ -34,7 +35,7 @@ function Login() {
 
   return (
     <div style={styles.page}>
-      <h1 style={styles.h1}>MNC ADMIN</h1>
+      <h1 style={styles.h1}>{tenant.adminTitle}</h1>
       <div style={styles.card}>
         <label style={styles.label}>EMAIL</label>
         <input
@@ -64,7 +65,7 @@ function Login() {
 function ConfigError() {
   return (
     <div style={styles.page}>
-      <h1 style={styles.h1}>MNC ADMIN</h1>
+      <h1 style={styles.h1}>{tenant.adminTitle}</h1>
       <div style={{ ...styles.card, textAlign: "center" }}>
         <div style={{ letterSpacing: 2 }}>BRAK KONFIGURACJI</div>
         <div style={{ marginTop: 12, color: "#6B7280", lineHeight: 1.5 }}>
@@ -180,7 +181,7 @@ export default function App() {
   if (!canUseDashboard) {
     return (
       <div style={styles.page}>
-        <h1 style={styles.h1}>MNC ADMIN</h1>
+        <h1 style={styles.h1}>{tenant.adminTitle}</h1>
         <div style={styles.card}>
           <div style={{ textAlign: "center", letterSpacing: 2 }}>
             BRAK DOSTĘPU
@@ -197,17 +198,17 @@ export default function App() {
   }
 
   const tabs: { key: Tab; label: string; show: boolean }[] = [
-    { key: "menu", label: "MENU", show: true },
-    { key: "points", label: "PUNKTY", show: true },
-    { key: "push", label: "PUSH", show: true },
-    { key: "users", label: "USERS", show: role === "admin" },
+    { key: "menu", label: tenant.tabs.menu, show: true },
+    { key: "points", label: tenant.tabs.points, show: true },
+    { key: "push", label: tenant.tabs.push, show: true },
+    { key: "users", label: tenant.tabs.users, show: role === "admin" },
   ];
 
   return (
     <div>
       <div style={styles.topBar}>
         <div style={styles.brandRow}>
-          <div style={styles.brand}>MNC ADMIN</div>
+          <div style={styles.brand}>{tenant.adminTitle}</div>
           <div style={styles.badge}>{role?.toUpperCase()}</div>
         </div>
 

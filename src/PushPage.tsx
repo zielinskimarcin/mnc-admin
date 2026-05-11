@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase, supabaseUrl } from "./supabase";
+import { tenant } from "./tenant";
 
 type Audience =
   | { type: "all" }
@@ -374,7 +375,7 @@ export default function PushPage() {
         body: JSON.stringify({
           title: title.trim(),
           body: body.trim(),
-          data: { screen: "MENU" },
+          data: { screen: tenant.defaultPushScreen },
           audience: sendAudience,
         }),
       });
@@ -407,7 +408,7 @@ export default function PushPage() {
     const payload = {
       title: schedTitle.trim(),
       body: schedBody.trim(),
-      data: { screen: "MENU" },
+      data: { screen: tenant.defaultPushScreen },
       audience: schedAudience,
       status: "scheduled",
       send_at,

@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
+import { defaultMenuCategory, tenant } from "./tenant";
+import type { MenuCategory } from "./tenant";
 
 type MenuItem = {
   id: string;
-  category: "MATCHA" | "NAPOJE" | "JEDZENIE";
+  category: MenuCategory;
   section: string;
   title: string;
   description: string | null;
@@ -11,7 +13,7 @@ type MenuItem = {
   order_index: number;
 };
 
-const CATS = ["MATCHA", "NAPOJE", "JEDZENIE"] as const;
+const CATS = tenant.menuCategories;
 
 function groszeToZl(p: number) {
   return (p / 100).toFixed(2).replace(".", ",");
@@ -24,7 +26,7 @@ function zlToGrosze(v: string) {
 }
 
 export default function MenuPage() {
-  const [cat, setCat] = useState<(typeof CATS)[number]>("MATCHA");
+  const [cat, setCat] = useState<MenuCategory>(defaultMenuCategory);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [drafts, setDrafts] = useState<Record<string, MenuItem>>({});
   const [loading, setLoading] = useState(true);
@@ -32,7 +34,7 @@ export default function MenuPage() {
   // DODAWANIE
   const [addOpen, setAddOpen] = useState(false);
   const [form, setForm] = useState({
-    category: "MATCHA" as MenuItem["category"],
+    category: defaultMenuCategory as MenuItem["category"],
     section: "",
     title: "",
     description: "",
@@ -115,7 +117,7 @@ useEffect(() => {
       <h1 style={styles.h1}>MENU</h1>
 
       {/* TABS */}
-      <div style={styles.tabs}>
+      <div style={{ ...styles.tabs, gridTemplateColumns: `repeat(${CATS.length}, minmax(0, 1fr))` }}>
         {CATS.map((c) => (
           <button
             key={c}
