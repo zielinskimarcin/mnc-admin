@@ -1,5 +1,6 @@
 import mncConfig from "../clients/mnc/dashboard.config.json";
 import mozziConfig from "../clients/mozzi/dashboard.config.json";
+import demoEnklawaConfig from "../clients/demo-enklawa/dashboard.config.json";
 // DASHBOARD_CONFIG_IMPORTS
 
 export type DashboardConfig = typeof mncConfig;
@@ -7,6 +8,7 @@ export type DashboardConfig = typeof mncConfig;
 const dashboardConfigs = {
   mnc: mncConfig,
   mozzi: mozziConfig,
+  "demo-enklawa": demoEnklawaConfig,
   // DASHBOARD_CONFIGS
 } satisfies Record<string, DashboardConfig>;
 

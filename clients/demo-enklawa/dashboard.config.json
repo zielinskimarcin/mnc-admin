@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "slug": "demo-enklawa",
+  "adminTitle": "ENKLAWA DEMO ADMIN",
+  "basePath": "/demo-enklawa-admin/",
+  "defaultPushScreen": "MENU",
+  "menuCategories": [
+    "ŚNIADANIA",
+    "REGIONALNE",
+    "OBIADY",
+    "SAŁATY",
+    "NAPOJE"
+  ],
+  "tabs": {
+    "menu": "MENU",
+    "points": "PUNKTY",
+    "push": "PUSH",
+    "users": "USERS"
+  }
+}
