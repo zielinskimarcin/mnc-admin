@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "./supabase";
+import {
+  isSupabaseConfigured,
+  missingSupabaseEnvVars,
+  supabase,
+} from "./supabase";
 
 import MenuPage from "./MenuPage";
 import PointsPage from "./PointsPage";
@@ -52,6 +56,23 @@ function Login() {
         </button>
 
         {msg && <div style={styles.msg}>{msg}</div>}
+      </div>
+    </div>
+  );
+}
+
+function ConfigError() {
+  return (
+    <div style={styles.page}>
+      <h1 style={styles.h1}>MNC ADMIN</h1>
+      <div style={{ ...styles.card, textAlign: "center" }}>
+        <div style={{ letterSpacing: 2 }}>BRAK KONFIGURACJI</div>
+        <div style={{ marginTop: 12, color: "#6B7280", lineHeight: 1.5 }}>
+          Panel nie ma ustawionych zmiennych Supabase.
+        </div>
+        <div style={{ marginTop: 12, fontSize: 12 }}>
+          {missingSupabaseEnvVars.join(", ")}
+        </div>
       </div>
     </div>
   );
@@ -122,6 +143,10 @@ export default function App() {
   async function signOut() {
     await supabase.auth.signOut();
     window.location.reload();
+  }
+
+  if (!isSupabaseConfigured) {
+    return <ConfigError />;
   }
 
   // 🔄 Loader startowy

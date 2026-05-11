@@ -1,8 +1,6 @@
-name: Push Cron (every minute)
+name: Push Cron (manual fallback)
 
 on:
-  schedule:
-    - cron: "* * * * *"
   workflow_dispatch:
 
 jobs:
@@ -13,5 +11,5 @@ jobs:
         run: |
           curl -sS -X POST "${{ secrets.SUPABASE_FUNCTION_URL }}" \
             -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${{ secrets.SUPABASE_CRON_SECRET }}" \
+            -H "x-cron-secret: ${{ secrets.SUPABASE_CRON_SECRET }}" \
             -d "{}"

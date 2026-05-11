@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "./supabase";
+import { supabase, supabaseUrl } from "./supabase";
 
 type Audience =
   | { type: "all" }
@@ -359,7 +359,13 @@ export default function PushPage() {
         return;
       }
 
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send_push`, {
+      if (!supabaseUrl) {
+        setMsg("Błąd: brak konfiguracji Supabase");
+        setLoading(false);
+        return;
+      }
+
+      const res = await fetch(`${supabaseUrl}/functions/v1/send_push`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
