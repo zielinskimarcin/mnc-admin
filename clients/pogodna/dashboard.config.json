@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "slug": "pogodna",
+  "adminTitle": "POGODNA ADMIN",
+  "basePath": "/pogodna-admin/",
+  "defaultPushScreen": "MENU",
+  "menuCategories": [
+    "KAWA",
+    "ŚNIADANIA",
+    "DESERY",
+    "WINO"
+  ],
+  "tabs": {
+    "menu": "MENU",
+    "points": "PUNKTY",
+    "push": "PUSH",
+    "users": "USERS"
+  }
+}

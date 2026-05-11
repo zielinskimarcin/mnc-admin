@@ -1,10 +1,12 @@
 import mncConfig from "../clients/mnc/dashboard.config.json";
+import pogodnaConfig from "../clients/pogodna/dashboard.config.json";
 // DASHBOARD_CONFIG_IMPORTS
 
 export type DashboardConfig = typeof mncConfig;
 
 const dashboardConfigs = {
   mnc: mncConfig,
+  "pogodna": pogodnaConfig,
   // DASHBOARD_CONFIGS
 } satisfies Record<string, DashboardConfig>;
 
