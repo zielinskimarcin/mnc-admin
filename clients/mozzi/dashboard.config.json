@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "slug": "pogodna",
-  "adminTitle": "POGODNA ADMIN",
-  "basePath": "/pogodna-admin/",
+  "slug": "mozzi",
+  "adminTitle": "MOZZI ADMIN",
+  "basePath": "/mozzi-admin/",
   "defaultPushScreen": "MENU",
   "menuCategories": [
     "KAWA",

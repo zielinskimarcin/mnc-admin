@@ -10,7 +10,7 @@ function usage() {
     "Usage: npm run client:new -- <slug> \"Dashboard Title\" [/base-path/]"
   );
   console.log(
-    "Example: npm run client:new -- pogodna \"POGODNA ADMIN\" /pogodna-admin/"
+    "Example: npm run client:new -- mozzi \"MOZZI ADMIN\" /mozzi-admin/"
   );
 }
 

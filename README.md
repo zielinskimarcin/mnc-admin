@@ -33,9 +33,9 @@ npm run deploy
 Create a new dashboard config:
 
 ```bash
-npm run client:new -- pogodna "POGODNA ADMIN" /pogodna-admin/
-VITE_CLIENT_SLUG=pogodna npm run client:validate -- pogodna
-VITE_CLIENT_SLUG=pogodna npm run build
+npm run client:new -- mozzi "MOZZI ADMIN" /mozzi-admin/
+VITE_CLIENT_SLUG=mozzi npm run client:validate -- mozzi
+VITE_CLIENT_SLUG=mozzi npm run build
 ```
 
 ## Clone Notes
