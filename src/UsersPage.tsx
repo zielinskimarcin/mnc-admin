@@ -11,8 +11,63 @@ type Row = {
   role: Role | null;
 };
 
+type DashboardStats = {
+  users: {
+    total: number;
+    admins: number;
+    staff: number;
+    regular: number;
+    new30d: number;
+    rewardReady: number;
+    averagePoints: number;
+  };
+  loyalty: {
+    events: number;
+    events30d: number;
+    rewardsRedeemed: number;
+    rewardsRedeemed30d: number;
+    pointsAdded30d: number;
+  };
+  push: {
+    tokens: number;
+    campaigns: number;
+    campaignTargets: number;
+    sent: number;
+    opens: number;
+    openRate: number;
+    jobs: number;
+  };
+  menu: {
+    items: number;
+  };
+};
+
+function formatNumber(value: number | null | undefined) {
+  return new Intl.NumberFormat("pl-PL").format(Number(value ?? 0));
+}
+
+function StatCard({
+  label,
+  value,
+  meta,
+}: {
+  label: string;
+  value: string | number;
+  meta: string;
+}) {
+  return (
+    <div style={s.statCard}>
+      <div style={s.statLabel}>{label}</div>
+      <div style={s.statValue}>{value}</div>
+      <div style={s.statMeta}>{meta}</div>
+    </div>
+  );
+}
+
 export default function UsersPage() {
   const [rows, setRows] = useState<Row[]>([]);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [statsMsg, setStatsMsg] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -36,8 +91,24 @@ export default function UsersPage() {
     setRows((data ?? []) as Row[]);
   }
 
+  async function loadStats() {
+    const { data, error } = await supabase.functions.invoke<DashboardStats>(
+      "dashboard_stats",
+      { body: {} }
+    );
+
+    if (error) {
+      setStatsMsg(error.message);
+      return;
+    }
+
+    setStats(data ?? null);
+    setStatsMsg(null);
+  }
+
   useEffect(() => {
     load();
+    loadStats();
   }, []);
 
   const filtered = useMemo(() => {
@@ -115,13 +186,58 @@ export default function UsersPage() {
         />
 
         <div style={{ marginTop: 12 }}>
-          <button style={s.btnWhite} onClick={load} disabled={loading}>
+          <button
+            style={s.btnWhite}
+            onClick={async () => {
+              await load();
+              await loadStats();
+            }}
+            disabled={loading}
+          >
             {loading ? "..." : "ODŚWIEŻ"}
           </button>
         </div>
 
         {msg && <div style={s.msg}>{msg}</div>}
       </div>
+
+      {stats && (
+        <>
+          <div style={s.statsGrid}>
+            <StatCard
+              label="UŻYTKOWNICY"
+              value={formatNumber(stats.users.total)}
+              meta={`+${formatNumber(stats.users.new30d)} / 30 DNI`}
+            />
+            <StatCard
+              label="GOTOWE NAGRODY"
+              value={formatNumber(stats.users.rewardReady)}
+              meta={`ŚR. ${stats.users.averagePoints} PKT`}
+            />
+            <StatCard
+              label="PUSH TOKENY"
+              value={formatNumber(stats.push.tokens)}
+              meta={`${stats.push.openRate}% OPEN RATE`}
+            />
+            <StatCard
+              label="ODEBRANE NAGRODY"
+              value={formatNumber(stats.loyalty.rewardsRedeemed)}
+              meta={`+${formatNumber(stats.loyalty.rewardsRedeemed30d)} / 30 DNI`}
+            />
+          </div>
+
+          <div style={s.statsStrip}>
+            <span>ADMIN {formatNumber(stats.users.admins)}</span>
+            <span>STAFF {formatNumber(stats.users.staff)}</span>
+            <span>MENU {formatNumber(stats.menu.items)}</span>
+            <span>KAMPANIE {formatNumber(stats.push.campaigns)}</span>
+            <span>OPERACJE 30D {formatNumber(stats.loyalty.events30d)}</span>
+            <span>PUNKTY +{formatNumber(stats.loyalty.pointsAdded30d)}</span>
+          </div>
+        </>
+      )}
+
+      {statsMsg && <div style={s.statsMsg}>STATYSTYKI: {statsMsg}</div>}
 
       <div style={s.table}>
         <div style={s.header}>
@@ -206,6 +322,59 @@ const s: Record<string, React.CSSProperties> = {
   },
 
   msg: { marginTop: 14 },
+
+  statsGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))",
+    gap: 12,
+    marginTop: 20,
+  },
+  statCard: {
+    border: "1px solid #000",
+    padding: 16,
+    minHeight: 112,
+    background: "#fff",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
+  },
+  statLabel: {
+    letterSpacing: 2,
+    fontSize: 11,
+    color: "#4B5563",
+  },
+  statValue: {
+    fontSize: 34,
+    lineHeight: 1,
+    letterSpacing: 1,
+    fontWeight: 500,
+    marginTop: 12,
+  },
+  statMeta: {
+    letterSpacing: 1.5,
+    fontSize: 11,
+    color: "#111",
+    marginTop: 14,
+  },
+  statsStrip: {
+    border: "1px solid #000",
+    borderTop: "none",
+    padding: "12px 14px",
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px 18px",
+    letterSpacing: 1.5,
+    fontSize: 11,
+    color: "#111",
+  },
+  statsMsg: {
+    marginTop: 14,
+    border: "1px solid #000",
+    padding: 12,
+    textAlign: "center",
+    fontSize: 12,
+    letterSpacing: 1,
+  },
 
   table: { marginTop: 20, border: "1px solid #000" },
   header: {
