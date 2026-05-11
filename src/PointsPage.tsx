@@ -17,6 +17,11 @@ type ProfileSummary = {
   short_code: string | null;
 };
 
+function formatEventReason(reason: string) {
+  if (reason === "reward_redemption") return "NAGRODA";
+  return "PUNKTY";
+}
+
 export default function PointsPage() {
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState<string | null>(null);
@@ -109,6 +114,38 @@ export default function PointsPage() {
     await loadEvents();
   }
 
+  async function redeemReward() {
+    const trimmed = code.trim();
+
+    if (!/^\d{3}$/.test(trimmed)) {
+      setMsg("Kod musi mieć dokładnie 3 cyfry");
+      return;
+    }
+
+    const ok = confirm("Odebrać nagrodę i odjąć 10 punktów?");
+    if (!ok) return;
+
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .rpc("staff_redeem_reward_by_code", {
+        p_short_code: trimmed,
+      })
+      .single();
+
+    setLoading(false);
+
+    if (error || !data) {
+      setMsg(error?.message ?? "Nie udało się odebrać nagrody");
+      return;
+    }
+
+    const newPoints = (data as { points: number }).points ?? 0;
+    setMsg(`Odebrano nagrodę. Nowy stan: ${newPoints}`);
+    setCode("");
+    await loadEvents();
+  }
+
   // odświeżenie “stanu” dla aktualnie wpisanego kodu (jeśli jest poprawny)
   async function refresh() {
     const trimmed = code.trim();
@@ -158,6 +195,11 @@ export default function PointsPage() {
     await adjustPoint(-1);
   }
 
+  async function redeem() {
+    setMsg(null);
+    await redeemReward();
+  }
+
   return (
     <div
       style={styles.page}
@@ -191,6 +233,12 @@ export default function PointsPage() {
           </button>
         </div>
 
+        <div style={styles.center}>
+          <button onClick={redeem} disabled={loading} style={styles.btnReward}>
+            ODBIERZ NAGRODĘ (-10)
+          </button>
+        </div>
+
         {msg && <div style={styles.msg}>{msg}</div>}
       </div>
 
@@ -216,6 +264,7 @@ export default function PointsPage() {
             const profile = profilesById[event.profile_id];
             const staff = event.staff_id ? profilesById[event.staff_id] : null;
             const deltaText = event.delta > 0 ? `+${event.delta}` : String(event.delta);
+            const reason = formatEventReason(event.reason);
 
             return (
               <div key={event.id} style={styles.historyRow}>
@@ -225,7 +274,10 @@ export default function PointsPage() {
                   {profile?.email ?? event.profile_id}
                 </div>
                 <div style={styles.deltaCol}>
-                  {deltaText} → {event.points_after}
+                  <div>{reason}</div>
+                  <div>
+                    {deltaText} → {event.points_after}
+                  </div>
                 </div>
                 <div style={styles.staffCol}>{staff?.email ?? event.staff_id ?? "-"}</div>
               </div>
@@ -275,6 +327,16 @@ const styles: Record<string, React.CSSProperties> = {
     height: 48,
     background: "#fff",
     color: "#000",
+    border: "1px solid #000",
+    letterSpacing: 2,
+    cursor: "pointer",
+  },
+
+  btnReward: {
+    width: "100%",
+    height: 48,
+    background: "#111",
+    color: "#fff",
     border: "1px solid #000",
     letterSpacing: 2,
     cursor: "pointer",
