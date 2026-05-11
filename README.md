@@ -11,7 +11,7 @@ VITE_SUPABASE_URL=...
 VITE_SUPABASE_ANON_KEY=...
 ```
 
-Client-specific dashboard settings live in `src/tenant.ts`:
+Client-specific dashboard settings live in `clients/<slug>/dashboard.config.json`:
 
 - `adminTitle`
 - `basePath`
@@ -19,14 +19,23 @@ Client-specific dashboard settings live in `src/tenant.ts`:
 - `defaultPushScreen`
 - tab labels
 
-For GitHub Pages or path-based deploys, set `VITE_ADMIN_BASE_PATH` or update `tenant.basePath`.
+`src/tenant.ts` is the registry/loader for those configs. For GitHub Pages or path-based deploys, set `VITE_ADMIN_BASE_PATH` or update the client's `basePath`.
 
 ## Commands
 
 ```bash
+npm run client:validate -- mnc
 npm run build
 npm run lint
 npm run deploy
+```
+
+Create a new dashboard config:
+
+```bash
+npm run client:new -- pogodna "POGODNA ADMIN" /pogodna-admin/
+VITE_CLIENT_SLUG=pogodna npm run client:validate -- pogodna
+VITE_CLIENT_SLUG=pogodna npm run build
 ```
 
 ## Clone Notes

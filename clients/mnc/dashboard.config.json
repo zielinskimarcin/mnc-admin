@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "slug": "mnc",
+  "adminTitle": "MNC ADMIN",
+  "basePath": "/mnc-admin/",
+  "defaultPushScreen": "MENU",
+  "menuCategories": ["MATCHA", "NAPOJE", "JEDZENIE"],
+  "tabs": {
+    "menu": "MENU",
+    "points": "PUNKTY",
+    "push": "PUSH",
+    "users": "USERS"
+  }
+}
