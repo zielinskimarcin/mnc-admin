@@ -539,6 +539,31 @@ export default function PushPage() {
     await loadHistory();
   }
 
+  async function clearCampaignHistory() {
+    const ok = confirm("Wyczyścić całą historię wysłanych pushy?");
+    if (!ok) return;
+
+    setLoading(true);
+    setMsg("");
+
+    const { error } = await supabase
+      .from("push_campaigns")
+      .delete()
+      .neq("id", "00000000-0000-0000-0000-000000000000");
+
+    setLoading(false);
+
+    if (error) {
+      setMsg("Błąd: " + error.message);
+      return;
+    }
+
+    setCampaigns([]);
+    setOpensByCampaign({});
+    setExpandedBody({});
+    setMsg("Wyczyszczono historię pushy");
+  }
+
   const scheduledJobs = useMemo(
     () => jobs.filter((j) => j.status === "scheduled"),
     [jobs]
@@ -1099,20 +1124,36 @@ export default function PushPage() {
             }}
           >
             <div style={{ letterSpacing: 2, fontSize: 12 }}>HISTORIA WYSŁANYCH</div>
-            <button
-              style={{
-                height: 36,
-                padding: "0 12px",
-                border: "1px solid #000",
-                background: "#fff",
-                cursor: "pointer",
-                letterSpacing: 2,
-              }}
-              onClick={loadHistory}
-              disabled={loading}
-            >
-              {loading ? "..." : "ODŚWIEŻ"}
-            </button>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" }}>
+              <button
+                style={{
+                  height: 36,
+                  padding: "0 12px",
+                  border: "1px solid #000",
+                  background: "#fff",
+                  cursor: "pointer",
+                  letterSpacing: 2,
+                }}
+                onClick={loadHistory}
+                disabled={loading}
+              >
+                {loading ? "..." : "ODŚWIEŻ"}
+              </button>
+              <button
+                style={{
+                  height: 36,
+                  padding: "0 12px",
+                  border: "1px solid #000",
+                  background: "#fff",
+                  cursor: "pointer",
+                  letterSpacing: 2,
+                }}
+                onClick={clearCampaignHistory}
+                disabled={loading}
+              >
+                WYCZYŚĆ
+              </button>
+            </div>
           </div>
 
           <div style={{ border: "1px solid #000", marginTop: 18 }}>

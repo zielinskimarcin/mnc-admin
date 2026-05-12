@@ -200,6 +200,31 @@ export default function PointsPage() {
     await redeemReward();
   }
 
+  async function clearEvents() {
+    const ok = confirm("Wyczyścić całą historię operacji punktowych?");
+    if (!ok) return;
+
+    setLoading(true);
+    setEventsMsg(null);
+
+    const { data, error } = await supabase.rpc("admin_clear_loyalty_events");
+
+    setLoading(false);
+
+    if (error) {
+      setEventsMsg("Błąd: " + error.message);
+      return;
+    }
+
+    setEvents([]);
+    setProfilesById({});
+    setEventsMsg(
+      typeof data === "number"
+        ? `Wyczyszczono historię (${data})`
+        : "Wyczyszczono historię"
+    );
+  }
+
   return (
     <div
       style={styles.page}
@@ -227,14 +252,12 @@ export default function PointsPage() {
           </button>
         </div>
 
-        <div style={styles.center}>
-          <button onClick={removePoint} disabled={loading} style={styles.btnWhite}>
+        <div style={styles.secondaryActions}>
+          <button onClick={removePoint} disabled={loading} style={styles.btnSecondary}>
             USUŃ PUNKT
           </button>
-        </div>
 
-        <div style={styles.center}>
-          <button onClick={redeem} disabled={loading} style={styles.btnReward}>
+          <button onClick={redeem} disabled={loading} style={styles.btnSecondary}>
             ODBIERZ NAGRODĘ (-10)
           </button>
         </div>
@@ -245,9 +268,14 @@ export default function PointsPage() {
       <div style={styles.historyCard}>
         <div style={styles.historyHead}>
           <div style={styles.historyTitle}>OSTATNIE OPERACJE</div>
-          <button onClick={loadEvents} style={styles.refreshBtn}>
-            ODŚWIEŻ
-          </button>
+          <div style={styles.historyActions}>
+            <button onClick={loadEvents} style={styles.refreshBtn} disabled={loading}>
+              ODŚWIEŻ
+            </button>
+            <button onClick={clearEvents} style={styles.refreshBtn} disabled={loading}>
+              WYCZYŚĆ
+            </button>
+          </div>
         </div>
 
         {eventsMsg && <div style={styles.msg}>{eventsMsg}</div>}
@@ -311,6 +339,7 @@ const styles: Record<string, React.CSSProperties> = {
   },
 
   center: { display: "flex", justifyContent: "center", marginTop: 12 },
+  secondaryActions: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 },
 
   btnBlack: {
     width: "100%",
@@ -322,32 +351,25 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: "pointer",
   },
 
-  btnWhite: {
+  btnSecondary: {
     width: "100%",
-    height: 48,
+    minHeight: 44,
     background: "#fff",
     color: "#000",
     border: "1px solid #000",
     letterSpacing: 2,
-    cursor: "pointer",
-  },
-
-  btnReward: {
-    width: "100%",
-    height: 48,
-    background: "#111",
-    color: "#fff",
-    border: "1px solid #000",
-    letterSpacing: 2,
+    fontSize: 12,
+    padding: "0 10px",
     cursor: "pointer",
   },
 
   msg: { marginTop: 14, fontSize: 14, color: "#111", textAlign: "center" },
-  historyCard: { border: "1px solid #000", padding: 18, marginTop: 22, background: "#fff" },
+  historyCard: { border: "1px solid #000", padding: 18, marginTop: 34, background: "#fff" },
   historyHead: { display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" },
   historyTitle: { letterSpacing: 2, fontSize: 12 },
+  historyActions: { display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "flex-end" },
   refreshBtn: { border: "1px solid #000", background: "#fff", padding: "10px 12px", letterSpacing: 2, cursor: "pointer" },
-  historyTable: { border: "1px solid #000", marginTop: 14, overflowX: "auto" },
+  historyTable: { border: "1px solid #000", marginTop: 20, overflowX: "auto" },
   historyRowHead: { display: "flex", minWidth: 760, borderBottom: "1px solid #000", padding: 12, fontWeight: 500 },
   historyRow: { display: "flex", minWidth: 760, borderBottom: "1px solid #E5E7EB", padding: 12, fontSize: 12 },
   dateCol: { width: 190 },
