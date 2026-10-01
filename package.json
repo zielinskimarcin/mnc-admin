@@ -8,6 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "preview:dev": "vite --mode preview",
+    "preview:build": "tsc -b && vite build --mode preview",
+    "preview:serve": "vite preview --base=/admin/",
     "deploy": "npm run build && gh-pages -d dist",
     "client:validate": "node scripts/validate-dashboard-client.mjs",
     "client:new": "node scripts/new-dashboard-client.mjs"

@@ -1,284 +1,243 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 import { defaultMenuCategory, tenant } from "./tenant";
-import type { MenuCategory } from "./tenant";
+
+type PreviewBusiness = {
+  slug: string;
+  categories: { key: string; label: string }[];
+};
 
 type MenuItem = {
   id: string;
-  category: MenuCategory;
+  category: string;
   section: string;
   title: string;
   description: string | null;
-  price: number; // grosze
+  price: number;
   order_index: number;
 };
 
-const CATS = tenant.menuCategories;
-
-function groszeToZl(p: number) {
-  return (p / 100).toFixed(2).replace(".", ",");
-}
-function zlToGrosze(v: string) {
-  const cleaned = v.trim().replace(",", ".");
-  const n = Number(cleaned);
-  if (Number.isNaN(n)) return null;
-  return Math.round(n * 100);
+function amountToInput(value: number, currency: "USD" | "PLN") {
+  const formatted = (value / 100).toFixed(2);
+  return currency === "PLN" ? formatted.replace(".", ",") : formatted;
 }
 
-export default function MenuPage() {
-  const [cat, setCat] = useState<MenuCategory>(defaultMenuCategory);
+function inputToAmount(value: string) {
+  const parsed = Number(value.trim().replace(",", "."));
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : null;
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export default function MenuPage({ previewBusiness, onChanged }: {
+  previewBusiness?: PreviewBusiness;
+  onChanged?: () => void;
+} = {}) {
+  const categories = previewBusiness?.categories.map((item) => item.key) ?? tenant.menuCategories;
+  const firstCategory = categories[0] ?? defaultMenuCategory;
+  const previewSlug = previewBusiness?.slug;
+  const currency: "USD" | "PLN" = previewBusiness && !["mnc", "mozzi"].includes(previewBusiness.slug) ? "USD" : "PLN";
+  const [category, setCategory] = useState<string>(firstCategory);
   const [items, setItems] = useState<MenuItem[]>([]);
   const [drafts, setDrafts] = useState<Record<string, MenuItem>>({});
   const [loading, setLoading] = useState(true);
-
-  // DODAWANIE
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [notice, setNotice] = useState("");
   const [addOpen, setAddOpen] = useState(false);
-  const [form, setForm] = useState({
-    category: defaultMenuCategory as MenuItem["category"],
-    section: "",
-    title: "",
-    description: "",
-    priceZl: "",
-  });
+  const [form, setForm] = useState({ section: "", title: "", description: "", price: "" });
 
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from("menu_items")
-      .select("*")
-      .order("category")
-      .order("section")
-      .order("order_index");
+    try {
+      if (previewSlug) {
+        const { data, error } = await supabase.from("preview_menu_items").select("*")
+          .eq("business_slug", previewSlug).order("category_key").order("section").order("position");
+        if (error) throw error;
+        const rows = (data ?? []).map((item) => ({
+          id: item.id,
+          category: item.category_key,
+          section: item.section,
+          title: item.title,
+          description: item.description,
+          price: item.price_cents,
+          order_index: item.position,
+        })) as MenuItem[];
+        setItems(rows);
+        setDrafts(Object.fromEntries(rows.map((item) => [item.id, item])));
+      } else {
+        const { data, error } = await supabase.from("menu_items").select("*")
+          .order("category").order("section").order("order_index");
+        if (error) throw error;
+        const rows = (data ?? []) as MenuItem[];
+        setItems(rows);
+        setDrafts(Object.fromEntries(rows.map((item) => [item.id, item])));
+      }
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  }, [previewSlug]);
 
-    setItems((data ?? []) as MenuItem[]);
-    setDrafts(Object.fromEntries((data ?? []).map((x: MenuItem) => [x.id, x])));
-    setLoading(false);
-  }
-
-useEffect(() => {
-  const run = async () => {
-    await load();
-  };
-  run();
-}, []);
+  useEffect(() => {
+    setCategory(firstCategory);
+    setAddOpen(false);
+    setNotice("");
+    void load();
+  }, [previewSlug, firstCategory, load]);
 
   const filtered = useMemo(
-    () => items.filter((x) => x.category === cat),
-    [items, cat]
+    () => items.filter((item) => item.category === category),
+    [items, category]
   );
 
   function updateDraft(id: string, patch: Partial<MenuItem>) {
-    setDrafts((prev) => ({
-      ...prev,
-      [id]: { ...prev[id], ...patch },
-    }));
+    setDrafts((current) => ({ ...current, [id]: { ...current[id], ...patch } }));
   }
 
   async function saveItem(id: string) {
-    await supabase.from("menu_items").update(drafts[id]).eq("id", id);
-    await load();
+    setSavingId(id);
+    setNotice("");
+    try {
+      const item = drafts[id];
+      if (previewBusiness) {
+        const { error } = await supabase.from("preview_menu_items").update({
+          category_key: item.category,
+          section: item.section.trim(),
+          title: item.title.trim(),
+          description: item.description?.trim() || null,
+          price_cents: item.price,
+          position: item.order_index,
+        }).eq("id", id).eq("business_slug", previewBusiness.slug);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("menu_items").update(item).eq("id", id);
+        if (error) throw error;
+      }
+      await load();
+      onChanged?.();
+      setNotice("Menu item saved.");
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setSavingId(null);
+    }
   }
 
   async function deleteItem(id: string) {
-    if (!confirm("Usunąć pozycję?")) return;
-    await supabase.from("menu_items").delete().eq("id", id);
-    await load();
+    if (!confirm("Delete this menu item?")) return;
+    setSavingId(id);
+    setNotice("");
+    try {
+      const query = previewBusiness
+        ? supabase.from("preview_menu_items").delete().eq("id", id).eq("business_slug", previewBusiness.slug)
+        : supabase.from("menu_items").delete().eq("id", id);
+      const { error } = await query;
+      if (error) throw error;
+      await load();
+      onChanged?.();
+      setNotice("Menu item deleted.");
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setSavingId(null);
+    }
   }
 
   async function addItem() {
-    const price = zlToGrosze(form.priceZl);
-    if (price === null || !form.title || !form.section) return;
-
-    // 🔑 AUTOMATYCZNY order_index = ostatni w danej sekcji
-    const sameSection = items.filter(
-      (x) => x.category === form.category && x.section === form.section
-    );
-    const maxOrder =
-      sameSection.length > 0
-        ? Math.max(...sameSection.map((x) => x.order_index))
-        : 0;
-
-    await supabase.from("menu_items").insert({
-      category: form.category,
-      section: form.section,
-      title: form.title,
-      description: form.description || null,
-      price,
-      order_index: maxOrder + 1,
-    });
-
-    setForm({ category: cat, section: "", title: "", description: "", priceZl: "" });
-    setAddOpen(false);
-    await load();
+    const price = inputToAmount(form.price);
+    if (price === null || !form.title.trim() || !form.section.trim()) {
+      setNotice("Add a section, item name, and valid price.");
+      return;
+    }
+    setSavingId("new");
+    setNotice("");
+    try {
+      const sameSection = items.filter((item) => item.category === category && item.section === form.section.trim());
+      const nextPosition = sameSection.length ? Math.max(...sameSection.map((item) => item.order_index)) + 1 : 1;
+      if (previewBusiness) {
+        const { error } = await supabase.from("preview_menu_items").insert({
+          business_slug: previewBusiness.slug,
+          category_key: category,
+          section: form.section.trim(),
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          price_cents: price,
+          position: nextPosition,
+        });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("menu_items").insert({
+          category,
+          section: form.section.trim(),
+          title: form.title.trim(),
+          description: form.description.trim() || null,
+          price,
+          order_index: nextPosition,
+        });
+        if (error) throw error;
+      }
+      setForm({ section: "", title: "", description: "", price: "" });
+      setAddOpen(false);
+      await load();
+      onChanged?.();
+      setNotice("Menu item added.");
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setSavingId(null);
+    }
   }
 
-  return (
-    <div style={styles.page}>
-      <h1 style={styles.h1}>MENU</h1>
-
-      {/* TABS */}
-      <div style={{ ...styles.tabs, gridTemplateColumns: `repeat(${CATS.length}, minmax(0, 1fr))` }}>
-        {CATS.map((c) => (
-          <button
-            key={c}
-            onClick={() => setCat(c)}
-            style={cat === c ? styles.tabOn : styles.tabOff}
-          >
-            {c}
-          </button>
-        ))}
-      </div>
-
-      {/* DODAJ */}
-      <div style={styles.center}>
-        <button
-          style={styles.addBtn}
-          onClick={() => {
-            setAddOpen((v) => !v);
-            setForm((f) => ({ ...f, category: cat }));
-          }}
-        >
-          {addOpen ? "ZAMKNIJ" : "DODAJ POZYCJĘ"}
-        </button>
-      </div>
-
-      {addOpen && (
-        <div style={styles.card}>
-          <input
-            style={styles.input}
-            placeholder="Sekcja"
-            value={form.section}
-            onChange={(e) => setForm((f) => ({ ...f, section: e.target.value }))}
-          />
-          <input
-            style={styles.input}
-            placeholder="Tytuł"
-            value={form.title}
-            onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-          />
-          <input
-            style={styles.input}
-            placeholder="Opis"
-            value={form.description}
-            onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-          />
-          <input
-            style={styles.input}
-            placeholder="Cena (zł)"
-            value={form.priceZl}
-            onChange={(e) => setForm((f) => ({ ...f, priceZl: e.target.value }))}
-          />
-
-          <div style={styles.center}>
-            <button style={styles.saveBtn} onClick={addItem}>
-              ZAPISZ
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* LISTA */}
-      {loading ? (
-        <p>Ładowanie…</p>
-      ) : (
-        filtered.map((it) => {
-          const d = drafts[it.id];
-          return (
-            <div key={it.id} style={styles.itemCard}>
-              <input
-                style={styles.input}
-                value={d.section}
-                onChange={(e) => updateDraft(it.id, { section: e.target.value })}
-              />
-              <input
-                style={styles.input}
-                value={d.title}
-                onChange={(e) => updateDraft(it.id, { title: e.target.value })}
-              />
-              <input
-                style={styles.input}
-                value={d.description ?? ""}
-                onChange={(e) =>
-                  updateDraft(it.id, { description: e.target.value })
-                }
-              />
-              <input
-                style={styles.input}
-                value={groszeToZl(d.price)}
-                onChange={(e) => {
-                  const p = zlToGrosze(e.target.value);
-                  if (p !== null) updateDraft(it.id, { price: p });
-                }}
-              />
-
-              <div style={styles.btnRow}>
-                <button style={styles.saveBtn} onClick={() => saveItem(it.id)}>
-                  ZAPISZ
-                </button>
-                <button
-                  style={styles.deleteBtn}
-                  onClick={() => deleteItem(it.id)}
-                >
-                  USUŃ
-                </button>
-              </div>
-            </div>
-          );
-        })
-      )}
+  return <main className="dashboard-page menu-editor" data-testid="menu-page">
+    <div className="dashboard-page-head">
+      <h1 className="dashboard-page-title">Menu</h1>
     </div>
-  );
+
+    <div className="dashboard-segments" aria-label="Menu categories">
+      {categories.map((key) => <button
+        key={key}
+        className={`dashboard-segment${category === key ? " is-active" : ""}`}
+        onClick={() => setCategory(key)}
+      >
+        {previewBusiness?.categories.find((item) => item.key === key)?.label ?? key}
+      </button>)}
+    </div>
+
+    <div className="menu-center">
+      <button className="dashboard-button dashboard-button--ghost menu-add-button" onClick={() => setAddOpen((open) => !open)}>
+        {addOpen ? "CLOSE" : "ADD ITEM"}
+      </button>
+    </div>
+
+    {notice && <div className="dashboard-notice menu-notice">{notice}</div>}
+
+    {addOpen && <section className="dashboard-panel menu-add-panel">
+      <input className="dashboard-input menu-stack-input" value={form.section} onChange={(event) => setForm((current) => ({ ...current, section: event.target.value }))} placeholder="Section" />
+      <input className="dashboard-input menu-stack-input" value={form.title} onChange={(event) => setForm((current) => ({ ...current, title: event.target.value }))} placeholder="Title" />
+      <input className="dashboard-input menu-stack-input" value={form.description} onChange={(event) => setForm((current) => ({ ...current, description: event.target.value }))} placeholder="Description" />
+      <input className="dashboard-input menu-stack-input" inputMode="decimal" value={form.price} onChange={(event) => setForm((current) => ({ ...current, price: event.target.value }))} placeholder={`Price (${currency})`} />
+      <div className="menu-center"><button className="dashboard-button menu-save-button" disabled={savingId === "new"} onClick={addItem}>{savingId === "new" ? "SAVING…" : "SAVE"}</button></div>
+    </section>}
+
+    <section className="menu-list" aria-live="polite">
+      {loading && <div className="dashboard-panel dashboard-empty">Loading menu…</div>}
+      {!loading && filtered.length === 0 && <div className="dashboard-panel dashboard-empty">No items in this category yet.</div>}
+      {!loading && filtered.map((item) => {
+        const draft = drafts[item.id];
+        return <article className="dashboard-panel menu-item-card" key={item.id}>
+          <input className="dashboard-input menu-stack-input" aria-label="Section" value={draft.section} onChange={(event) => updateDraft(item.id, { section: event.target.value })} />
+          <input className="dashboard-input menu-stack-input" aria-label="Title" value={draft.title} onChange={(event) => updateDraft(item.id, { title: event.target.value })} />
+          <input className="dashboard-input menu-stack-input" aria-label="Description" value={draft.description ?? ""} onChange={(event) => updateDraft(item.id, { description: event.target.value })} />
+          <input className="dashboard-input menu-stack-input" aria-label={`Price (${currency})`} inputMode="decimal" value={amountToInput(draft.price, currency)} onChange={(event) => { const value = inputToAmount(event.target.value); if (value !== null) updateDraft(item.id, { price: value }); }} />
+          <div className="dashboard-actions menu-item-actions">
+            <button className="dashboard-button" disabled={savingId === item.id} onClick={() => saveItem(item.id)}>{savingId === item.id ? "SAVING…" : "SAVE"}</button>
+            <button className="dashboard-button dashboard-button--ghost" disabled={savingId === item.id} onClick={() => deleteItem(item.id)}>DELETE</button>
+          </div>
+        </article>;
+      })}
+    </section>
+  </main>;
 }
-
-const styles: Record<string, React.CSSProperties> = {
-  page: { maxWidth: 720, margin: "0 auto", padding: 24 },
-  h1: { letterSpacing: 4, fontWeight: 500, textAlign: "center" },
-
-  tabs: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr 1fr",
-    border: "1px solid #000",
-    marginTop: 18,
-  },
-  tabOn: { height: 48, background: "#000", color: "#fff", border: "none" },
-  tabOff: { height: 48, background: "#fff", color: "#000", border: "none" },
-
-  center: { display: "flex", justifyContent: "center", marginTop: 16 },
-
-  addBtn: {
-    padding: "14px 40px",
-    border: "1px solid #000",
-    background: "#fff",
-    letterSpacing: 2,
-    cursor: "pointer",
-  },
-
-  saveBtn: {
-    padding: "14px 40px",
-    border: "1px solid #000",
-    background: "#000",
-    color: "#fff",
-    letterSpacing: 2,
-    cursor: "pointer",
-  },
-
-  deleteBtn: {
-    padding: "14px 40px",
-    border: "1px solid #000",
-    background: "#fff",
-    letterSpacing: 2,
-    cursor: "pointer",
-  },
-
-  card: { border: "1px solid #000", padding: 18, marginTop: 18 },
-  itemCard: { border: "1px solid #000", padding: 18, marginTop: 18 },
-
-  input: { width: "100%", padding: 12, border: "1px solid #000", marginTop: 8 },
-
-  btnRow: {
-    display: "flex",
-    justifyContent: "center",
-    gap: 16,
-    marginTop: 16,
-  },
-};

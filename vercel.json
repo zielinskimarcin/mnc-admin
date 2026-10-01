@@ -1,0 +1,13 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run preview:build",
+  "outputDirectory": "dist",
+  "redirects": [
+    { "source": "/", "destination": "/admin", "permanent": false }
+  ],
+  "rewrites": [
+    { "source": "/admin/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/admin", "destination": "/index.html" },
+    { "source": "/admin/:path*", "destination": "/index.html" }
+  ]
+}

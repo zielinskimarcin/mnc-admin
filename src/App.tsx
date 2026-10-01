@@ -10,6 +10,7 @@ import PointsPage from "./PointsPage";
 import PushPage from "./PushPage";
 import UsersPage from "./UsersPage";
 import { tenant } from "./tenant";
+import DashboardChrome from "./DashboardChrome";
 
 type Tab = "menu" | "points" | "push" | "users";
 type Role = "admin" | "staff" | "user" | null;
@@ -205,37 +206,12 @@ export default function App() {
   ];
 
   return (
-    <div>
-      <div style={styles.topBar}>
-        <div style={styles.brandRow}>
-          <div style={styles.brand}>{tenant.adminTitle}</div>
-          <div style={styles.badge}>{role?.toUpperCase()}</div>
-        </div>
-
-        <button style={styles.smallBtn} onClick={signOut}>
-          WYLOGUJ
-        </button>
-      </div>
-
-      <div style={styles.tabsRow}>
-        {tabs
-          .filter((t) => t.show)
-          .map((t) => (
-            <button
-              key={t.key}
-              style={tab === t.key ? styles.tabOn : styles.tabOff}
-              onClick={() => setTab(t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
-      </div>
-
+    <DashboardChrome title={tenant.adminTitle} role={role ?? ""} tabs={tabs} activeTab={tab} onTab={(next) => setTab(next as Tab)} onSignOut={signOut}>
       {tab === "menu" && <MenuPage />}
       {tab === "points" && <PointsPage />}
       {tab === "push" && <PushPage />}
       {tab === "users" && <UsersPage />}
-    </div>
+    </DashboardChrome>
   );
 }
 

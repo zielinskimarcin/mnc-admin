@@ -1,10 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import App from "./App.tsx";
 import "./index.css";
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+const rootModule = import.meta.env.MODE === "preview"
+  ? import("./preview/PreviewOperatorApp.tsx")
+  : import("./App.tsx");
+
+rootModule.then(({ default: Root }) => {
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode><Root /></React.StrictMode>
+  );
+});
