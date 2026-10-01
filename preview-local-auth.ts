@@ -44,14 +44,19 @@ export function previewLocalAuth(url: string): Plugin {
           }
 
           const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
-          const { data: operators, error: operatorsError } = await admin.from("preview_operators").select("user_id").limit(2);
+          const { data: operators, error: operatorsError } = await admin.from("preview_operators").select("user_id").limit(3);
           if (operatorsError) throw operatorsError;
-          if (operators?.length !== 1) throw new Error("Expected exactly one preview operator");
-          const operatorId = operators[0].user_id as string;
-          const { data: operator, error: userError } = await admin.auth.admin.getUserById(operatorId);
-          if (userError || !operator.user?.email) throw userError ?? new Error("Preview operator has no email");
-          const { data: link, error: linkError } = await admin.auth.admin.generateLink({ type: "magiclink", email: operator.user.email });
-          if (linkError || !link.properties?.hashed_token || link.user?.id !== operatorId) {
+          if (!operators || operators.length < 1 || operators.length > 2) throw new Error("Unexpected preview operator count");
+          const users = await Promise.all(operators.map(async ({ user_id }) => {
+            const { data, error } = await admin.auth.admin.getUserById(user_id as string);
+            if (error || !data.user?.email) throw error ?? new Error("Preview operator has no email");
+            return data.user;
+          }));
+          const localOperators = users.filter((user) => user.email !== "demo-operator@smaklo.com");
+          if (localOperators.length !== 1) throw new Error("Expected exactly one local preview operator");
+          const localOperator = localOperators[0];
+          const { data: link, error: linkError } = await admin.auth.admin.generateLink({ type: "magiclink", email: localOperator.email! });
+          if (linkError || !link.properties?.hashed_token || link.user?.id !== localOperator.id) {
             throw linkError ?? new Error("Could not create the operator session");
           }
           response.setHeader("Content-Type", "application/json");
