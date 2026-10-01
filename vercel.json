@@ -3,7 +3,8 @@
   "buildCommand": "npm run preview:build",
   "outputDirectory": "dist",
   "redirects": [
-    { "source": "/", "destination": "/admin", "permanent": false }
+    { "source": "/", "destination": "/admin", "permanent": false },
+    { "source": "/admin/", "destination": "/admin", "permanent": false }
   ],
   "rewrites": [
     { "source": "/admin/assets/:path*", "destination": "/assets/:path*" },

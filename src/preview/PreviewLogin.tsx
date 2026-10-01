@@ -10,7 +10,9 @@ export default function PreviewLogin() {
     if (!email.trim()) return;
     setBusy(true);
     setNotice("");
-    const redirectTo = `${window.location.origin}${import.meta.env.BASE_URL}`;
+    // Vercel serves the dashboard at /admin (without a trailing slash).
+    const basePath = import.meta.env.BASE_URL.replace(/\/$/, "") || "/";
+    const redirectTo = `${window.location.origin}${basePath}`;
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
