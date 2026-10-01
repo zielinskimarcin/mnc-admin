@@ -62,6 +62,7 @@ export default function PreviewMessagesPage({ business }: { business: PreviewBus
 
   useEffect(() => { void load(); }, [load]);
   useEffect(() => { if (view === "schedule") void loadJobs(); }, [view, loadJobs]);
+  useEffect(() => { if (view === "history") void load(); }, [view, load]);
 
   const approvedDevices = useMemo(() => devices.filter((device) => device.approved), [devices]);
   const canSubmit = !busy && Boolean(title.trim()) && Boolean(body.trim()) && approvedDevices.length > 0;
