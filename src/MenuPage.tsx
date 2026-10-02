@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "./supabase";
 import { defaultMenuCategory, tenant } from "./tenant";
+import type { PreviewMenuItem } from "./preview/types";
 
 type PreviewBusiness = {
   slug: string;
@@ -31,18 +32,31 @@ function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-export default function MenuPage({ previewBusiness, onChanged }: {
+function fromPreviewItems(rows: PreviewMenuItem[]): MenuItem[] {
+  return rows.map((item) => ({
+    id: item.id,
+    category: item.category_key,
+    section: item.section,
+    title: item.title,
+    description: item.description,
+    price: item.price_cents,
+    order_index: item.position,
+  }));
+}
+
+export default function MenuPage({ previewBusiness, previewMenuItems, onChanged }: {
   previewBusiness?: PreviewBusiness;
-  onChanged?: () => void;
+  previewMenuItems?: PreviewMenuItem[];
+  onChanged?: () => Promise<void>;
 } = {}) {
   const categories = previewBusiness?.categories.map((item) => item.key) ?? tenant.menuCategories;
   const firstCategory = categories[0] ?? defaultMenuCategory;
   const previewSlug = previewBusiness?.slug;
   const currency: "USD" | "PLN" = previewBusiness && !["mnc", "mozzi"].includes(previewBusiness.slug) ? "USD" : "PLN";
   const [category, setCategory] = useState<string>(firstCategory);
-  const [items, setItems] = useState<MenuItem[]>([]);
-  const [drafts, setDrafts] = useState<Record<string, MenuItem>>({});
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<MenuItem[]>(() => previewMenuItems ? fromPreviewItems(previewMenuItems) : []);
+  const [drafts, setDrafts] = useState<Record<string, MenuItem>>(() => Object.fromEntries(items.map((item) => [item.id, item])));
+  const [loading, setLoading] = useState(!previewMenuItems);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [addOpen, setAddOpen] = useState(false);
@@ -55,15 +69,7 @@ export default function MenuPage({ previewBusiness, onChanged }: {
         const { data, error } = await supabase.from("preview_menu_items").select("*")
           .eq("business_slug", previewSlug).order("category_key").order("section").order("position");
         if (error) throw error;
-        const rows = (data ?? []).map((item) => ({
-          id: item.id,
-          category: item.category_key,
-          section: item.section,
-          title: item.title,
-          description: item.description,
-          price: item.price_cents,
-          order_index: item.position,
-        })) as MenuItem[];
+        const rows = fromPreviewItems((data ?? []) as PreviewMenuItem[]);
         setItems(rows);
         setDrafts(Object.fromEntries(rows.map((item) => [item.id, item])));
       } else {
@@ -85,8 +91,16 @@ export default function MenuPage({ previewBusiness, onChanged }: {
     setCategory(firstCategory);
     setAddOpen(false);
     setNotice("");
-    void load();
-  }, [previewSlug, firstCategory, load]);
+    if (!previewBusiness) void load();
+  }, [previewSlug, firstCategory, load, previewBusiness]);
+
+  useEffect(() => {
+    if (!previewMenuItems) return;
+    const rows = fromPreviewItems(previewMenuItems);
+    setItems(rows);
+    setDrafts(Object.fromEntries(rows.map((item) => [item.id, item])));
+    setLoading(false);
+  }, [previewMenuItems]);
 
   const filtered = useMemo(
     () => items.filter((item) => item.category === category),
@@ -116,8 +130,8 @@ export default function MenuPage({ previewBusiness, onChanged }: {
         const { error } = await supabase.from("menu_items").update(item).eq("id", id);
         if (error) throw error;
       }
-      await load();
-      onChanged?.();
+      if (previewBusiness && onChanged) await onChanged();
+      else await load();
       setNotice("Menu item saved.");
     } catch (error) {
       setNotice(errorMessage(error));
@@ -136,8 +150,8 @@ export default function MenuPage({ previewBusiness, onChanged }: {
         : supabase.from("menu_items").delete().eq("id", id);
       const { error } = await query;
       if (error) throw error;
-      await load();
-      onChanged?.();
+      if (previewBusiness && onChanged) await onChanged();
+      else await load();
       setNotice("Menu item deleted.");
     } catch (error) {
       setNotice(errorMessage(error));
@@ -181,8 +195,8 @@ export default function MenuPage({ previewBusiness, onChanged }: {
       }
       setForm({ section: "", title: "", description: "", price: "" });
       setAddOpen(false);
-      await load();
-      onChanged?.();
+      if (previewBusiness && onChanged) await onChanged();
+      else await load();
       setNotice("Menu item added.");
     } catch (error) {
       setNotice(errorMessage(error));

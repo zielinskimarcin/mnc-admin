@@ -24,7 +24,7 @@ function repeatLabel(cron: string | null) {
   return cron.endsWith(" *") ? "Every day" : "Every week";
 }
 
-export default function PreviewMessagesPage({ business }: { business: PreviewBusiness }) {
+export default function PreviewMessagesPage({ business, active = true }: { business: PreviewBusiness; active?: boolean }) {
   const [view, setView] = useState<View>("send");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -60,9 +60,9 @@ export default function PreviewMessagesPage({ business }: { business: PreviewBus
     else setJobs((data ?? []) as PushJob[]);
   }, [business.slug]);
 
-  useEffect(() => { void load(); }, [load]);
-  useEffect(() => { if (view === "schedule") void loadJobs(); }, [view, loadJobs]);
-  useEffect(() => { if (view === "history") void load(); }, [view, load]);
+  useEffect(() => { if (active) void load(); }, [active, load]);
+  useEffect(() => { if (active && view === "schedule") void loadJobs(); }, [active, view, loadJobs]);
+  useEffect(() => { if (active && view === "history") void load(); }, [active, view, load]);
 
   const approvedDevices = useMemo(() => devices.filter((device) => device.approved), [devices]);
   const canSubmit = !busy && Boolean(title.trim()) && Boolean(body.trim()) && approvedDevices.length > 0;

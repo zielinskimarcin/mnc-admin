@@ -25,8 +25,9 @@ function message(error: unknown) {
   return error instanceof Error ? error.message : String(error);
 }
 
-export default function PointsPage({ previewBusiness }: {
+export default function PointsPage({ previewBusiness, active = true }: {
   previewBusiness?: { slug: string; reward_threshold: number };
+  active?: boolean;
 } = {}) {
   const [code, setCode] = useState(previewBusiness ? "123" : "");
   const [notice, setNotice] = useState<string | null>(null);
@@ -87,8 +88,8 @@ export default function PointsPage({ previewBusiness }: {
   useEffect(() => {
     setCode(previewBusiness ? "123" : "");
     setNotice(null);
-    void loadEvents();
-  }, [previewBusiness, loadEvents]);
+  }, [previewBusiness]);
+  useEffect(() => { if (active) void loadEvents(); }, [active, loadEvents]);
 
   function validCode() {
     const value = code.trim();

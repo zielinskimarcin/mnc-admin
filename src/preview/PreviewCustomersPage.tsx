@@ -11,7 +11,7 @@ function dateLabel(value: string | null) {
   return new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 }
 
-export default function PreviewCustomersPage({ business }: { business: PreviewBusiness }) {
+export default function PreviewCustomersPage({ business, active = true }: { business: PreviewBusiness; active?: boolean }) {
   const [customers, setCustomers] = useState<PreviewCustomer[]>([]);
   const [query, setQuery] = useState("");
   const [notice, setNotice] = useState("");
@@ -27,7 +27,7 @@ export default function PreviewCustomersPage({ business }: { business: PreviewBu
     }
   }, [business.slug]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { if (active) void load(); }, [active, load]);
 
   const filtered = useMemo(() => {
     const value = query.trim().toLowerCase();

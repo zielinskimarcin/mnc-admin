@@ -152,10 +152,12 @@ export default function PreviewOperatorApp() {
   const [operatorLoading, setOperatorLoading] = useState(true);
   const [accessError, setAccessError] = useState("");
   const [businesses, setBusinesses] = useState<PreviewBusiness[]>([]);
+  const [businessesReady, setBusinessesReady] = useState(false);
   const [slug, setSlug] = useState("");
   const [menu, setMenu] = useState<PreviewMenuItem[]>([]);
   const [loadedSlug, setLoadedSlug] = useState<string | null>(null);
   const [tab, setTab] = useState<Tab>("menu");
+  const [visitedTabs, setVisitedTabs] = useState<Tab[]>(["menu"]);
   const [manifestText, setManifestText] = useState(JSON.stringify(emptyManifest, null, 2));
   const [editingNew, setEditingNew] = useState(false);
   const [notice, setNotice] = useState("");
@@ -205,7 +207,10 @@ export default function PreviewOperatorApp() {
     setLoadedSlug(businessSlug);
   }, []);
 
-  useEffect(() => { if (operator) loadBusinesses().catch((error) => setNotice(message(error))); }, [operator, loadBusinesses]);
+  useEffect(() => {
+    if (!operator) return;
+    loadBusinesses().catch((error) => setNotice(message(error))).finally(() => setBusinessesReady(true));
+  }, [operator, loadBusinesses]);
   useEffect(() => { if (operator && slug) loadMenu(slug).catch((error) => setNotice(message(error))); }, [operator, slug, loadMenu]);
 
   useEffect(() => {
@@ -272,11 +277,12 @@ export default function PreviewOperatorApp() {
     ? <div className="preview-login-shell"><section className="preview-login-card"><h1>Could not open dashboard</h1><p>{accessError}</p><button className="dashboard-button" onClick={() => window.location.reload()}>RETRY</button></section></div>
     : <PreviewLogin />;
   if (!operator) return <div className="preview-login-shell"><section className="preview-login-card"><h1>Access restricted</h1><p>This account is not an approved preview operator.</p><button className="dashboard-button dashboard-button--ghost" onClick={signOut}>SIGN OUT</button></section></div>;
+  if (!businessesReady) return <div className="preview-login-shell"><section className="preview-login-card">Loading restaurants…</section></div>;
 
   return <div className="preview-shell" style={dashboardTheme(selected)} data-preset={selected?.design_preset ?? "mnc"}>
     <DashboardChrome
       title={selected ? `${selected.display_name.toUpperCase()} ADMIN` : "RESTAURANT ADMIN"}
-      brandControl={<BusinessPicker businesses={businesses} selected={selected} onSelect={(nextSlug) => { setLoadedSlug(null); setMenu([]); setSlug(nextSlug); setEditingNew(false); setNotice(""); setTab("menu"); }} />}
+      brandControl={<BusinessPicker businesses={businesses} selected={selected} onSelect={(nextSlug) => { setLoadedSlug(null); setMenu([]); setSlug(nextSlug); setEditingNew(false); setNotice(""); setTab("menu"); setVisitedTabs(["menu"]); }} />}
       role="operator"
       hideRole
       signOutLabel="SIGN OUT"
@@ -287,14 +293,14 @@ export default function PreviewOperatorApp() {
         { key: "customers", label: "USERS" },
       ]}
       activeTab={tab}
-      onTab={(next) => { setTab(next as Tab); setNotice(""); }}
+      onTab={(next) => { const nextTab = next as Tab; setTab(nextTab); setVisitedTabs((current) => current.includes(nextTab) ? current : [...current, nextTab]); setNotice(""); }}
       onSignOut={signOut}
     >
       {notice && <div className="dashboard-page"><div className="dashboard-notice global-notice">{notice}</div></div>}
-      {selected && tab === "menu" && <MenuPage key={slug} previewBusiness={selected} onChanged={() => loadMenu(slug).catch((error) => setNotice(message(error)))} />}
-      {selected && tab === "points" && <PointsPage key={slug} previewBusiness={selected} />}
-      {selected && tab === "push" && <PreviewMessagesPage key={slug} business={selected} />}
-      {selected && tab === "customers" && <PreviewCustomersPage key={slug} business={selected} />}
+      {selected && visitedTabs.includes("menu") && <div className="preview-tab-panel" hidden={tab !== "menu"}><MenuPage key={slug} previewBusiness={selected} previewMenuItems={loadedSlug === slug ? menu : undefined} onChanged={() => loadMenu(slug)} /></div>}
+      {selected && visitedTabs.includes("points") && <div className="preview-tab-panel" hidden={tab !== "points"}><PointsPage key={slug} previewBusiness={selected} active={tab === "points"} /></div>}
+      {selected && visitedTabs.includes("push") && <div className="preview-tab-panel" hidden={tab !== "push"}><PreviewMessagesPage key={slug} business={selected} active={tab === "push"} /></div>}
+      {selected && visitedTabs.includes("customers") && <div className="preview-tab-panel" hidden={tab !== "customers"}><PreviewCustomersPage key={slug} business={selected} active={tab === "customers"} /></div>}
       {tab === "business" && <SetupPage selected={selected} manifestText={manifestText} setManifestText={(value) => { setManifestText(value); setEditingNew(true); }} busy={busy} editingNew={editingNew} loaded={loadedSlug === selected?.slug} onNew={() => { setEditingNew(true); setManifestText(JSON.stringify(emptyManifest, null, 2)); }} onSave={importManifest} onUpload={uploadAsset} />}
       {tab !== "business" && !selected && <main className="dashboard-page"><section className="dashboard-panel dashboard-empty">Add a business pack first.</section></main>}
     </DashboardChrome>
